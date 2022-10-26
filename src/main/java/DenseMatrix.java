@@ -3,12 +3,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class DenseMatrix {
+public class DenseMatrix implements Matrix{
+    private final double DELTA = 0.001;
     private final int lHash = 1;
-    private final int cHash = 2;
-    private double[][] data;
+    private final int cHash = 3;
     private double hash = 0;
-    private final double delta = 0.001;
+    private double[][] data;
     private int w, h;
     DenseMatrix(){
         this.data = null;
@@ -40,86 +40,28 @@ public class DenseMatrix {
     }
     @Override
     public boolean equals(Object m) {
-        if (m instanceof DenseMatrix) {
-            if (this.h == ((DenseMatrix) m).h && this.w == ((DenseMatrix) m).w){
-                if (Math.abs(this.hash - ((DenseMatrix) m).hash) < delta) {
-                    for (int i = 0; i < this.h; ++i) {
-                        for (int j = 0; j < this.w; ++j) {
-                            if (Math.abs(this.data[i][j] - ((DenseMatrix) m).data[i][j]) > delta) {
-                                System.out.println("Elements on place [" + i + ", " + j + "] - " +
-                                        this.data[i][j] + " and " + ((DenseMatrix) m).data[i][j] + " are not equal");
-                                return false;
+        if (m instanceof Matrix) {
+            if (m instanceof DenseMatrix) {
+                if (Math.abs(this.hash - ((DenseMatrix) m).hash) < DELTA) {
+                    if (this.h == ((DenseMatrix) m).h && this.w == ((DenseMatrix) m).w) {
+                        for (int i = 0; i < this.h; ++i) {
+                            for (int j = 0; j < this.w; ++j) {
+                                if (Math.abs(this.data[i][j] - ((DenseMatrix) m).data[i][j]) > DELTA) {
+                                    System.out.println("Elements on place [" + i + ", " + j + "] - " +
+                                            this.data[i][j] + " and " + ((DenseMatrix) m).data[i][j] + " are not equal");
+                                    return false;
+                                }
                             }
                         }
+                        return true;
                     }
-                    return true;
                 }
             }
+            else if (m instanceof SparseMatrix) return m.equals(this);
         }
         return false;
     }
-    @Override
-    public String toString() {
-        this.display();
-        return "Height - " + this.h + ", width - " + this.w + "\nHash: " + this.hash;
-    }
-    int getH() {
-        return this.h;
-    }
-    int getW() {
-        return this.w;
-    }
-    int getlHash() {
-        return this.lHash;
-    }
-    int getcHash() {
-        return this.cHash;
-    }
-    void setH(int height) {
-        this.h = height;
-    }
-    void setW(int width) {
-        this.w = width;
-    }
-    void addHash(double num) {
-        this.hash += num;
-    }
-    double[][] getData() {
-        double[][] res = new double[this.h][this.w];
-        for (int i = 0; i < this.h; ++i) {
-            for (int j = 0; j < this.w; ++j) {
-                res[i][j] = this.data[i][j];
-            }
-        }
-        return res;
-    }
-    DenseMatrix negMatrix() {
-        if (this.data != null) {
-            DenseMatrix res = new DenseMatrix(this.h, this.w);
-            res.hash -= this.hash;
-            for (int i = 0; i < this.h; ++i) {
-                for (int j = 0; j < this.w; ++j) {
-                    res.data[i][j] = -this.data[i][j];
-                }
-            }
-            return res;
-        }
-        return this;
-    }
-    DenseMatrix transposedMatrix() {
-        if (this.data != null) {
-            DenseMatrix res = new DenseMatrix(this.w, this.h);
-            for (int i = 0; i < this.h; ++i) {
-                for (int j = 0; j < this.w; ++j) {
-                    res.data[j][i] = this.data[i][j];
-                    res.hash += this.data[i][j] * Math.pow(lHash, j) * Math.pow(cHash, i);
-                }
-            }
-            return res;
-        }
-        return this;
-    }
-    void display() {
+    public void display() {
         if (this.data != null) {
             int[] columnWidth = new int[this.w];
             int[][] elemLength = new int[this.h][this.w];
@@ -140,6 +82,44 @@ public class DenseMatrix {
         }
         else System.out.println("Empty matrix");
     }
+    @Override
+    public String toString() {
+        this.display();
+        return "Height - " + this.h + ", width - " + this.w + "\nHash: " + this.hash;
+    }
+    public int getH() {
+        return this.h;
+    }
+    public int getW() {
+        return this.w;
+    }
+    public double getElem(int i, int j){
+        if (i < this.h && j < this.w) {
+            return this.data[i][j];
+        }
+        return 0;
+    }
+    double getHash() {
+        return hash;
+    }
+    void setH(int height) {
+        this.h = height;
+    }
+    void setW(int width) {
+        this.w = width;
+    }
+    void addHash(double num) {
+        this.hash += num;
+    }
+    public double[][] getData() {
+        double[][] res = new double[this.h][this.w];
+        for (int i = 0; i < this.h; ++i) {
+            for (int j = 0; j < this.w; ++j) {
+                res[i][j] = this.data[i][j];
+            }
+        }
+        return res;
+    }
     void addElem(double elem, int i, int j) {
         if (i >= 0 && j >= 0) {
             if (i <= this.h && j <= this.w) {
@@ -147,6 +127,32 @@ public class DenseMatrix {
                 this.hash += elem * Math.pow(lHash, i) * Math.pow(cHash, j);
             }
         }
+    }
+    public DenseMatrix negMatrix() {
+        if (this.data != null) {
+            DenseMatrix res = new DenseMatrix(this.h, this.w);
+            res.hash -= this.hash;
+            for (int i = 0; i < this.h; ++i) {
+                for (int j = 0; j < this.w; ++j) {
+                    res.data[i][j] = -this.data[i][j];
+                }
+            }
+            return res;
+        }
+        return this;
+    }
+    public DenseMatrix transposedMatrix() {
+        if (this.data != null) {
+            DenseMatrix res = new DenseMatrix(this.w, this.h);
+            for (int i = 0; i < this.h; ++i) {
+                for (int j = 0; j < this.w; ++j) {
+                    res.data[j][i] = this.data[i][j];
+                    res.hash += this.data[i][j] * Math.pow(lHash, j) * Math.pow(cHash, i);
+                }
+            }
+            return res;
+        }
+        return this;
     }
     DenseMatrix expandMatrix(int newh, int neww) {
         if (newh >= this.h && neww >= this.w) {
@@ -159,9 +165,9 @@ public class DenseMatrix {
         }
         return this;
     }
-    // Copies data from existing matrix to new one
+    // Copies data from existing matrix to the new one
     // not including ends
-    DenseMatrix copy(int begh, int endh, int begw, int endw) {
+    public DenseMatrix copy(int begh, int endh, int begw, int endw) {
         if (begh >= 0 && begw >= 0) {
             if (endh - begh > 0 && endw - begw > 0 && this.data != null) {
                 int toh = Math.min(this.h, endh);
@@ -264,7 +270,7 @@ public class DenseMatrix {
                 while ((1 << n) < m.h || (1 << n) < m.w) ++n;
                 int p = Math.max(k, n) - 1;
                 res = new DenseMatrix(this.h, m.w);
-                if (p > 32) {
+                if (p > 11) {
                     int partition = (int) Math.pow(2, p);
                     // "this" matrix separation
                     DenseMatrix a1 = this.copy(0, partition, 0, partition);
@@ -294,8 +300,8 @@ public class DenseMatrix {
                         for (int i = 0; i < res.w; ++i) {
                             for (int j = 0; j < toh; ++j) {
                                 res.data[k][i] += this.data[k][j] * transposed.data[i][j];
-                                res.hash += this.data[k][j] * transposed.data[i][j] * Math.pow(lHash, k) * Math.pow(cHash, i);
                             }
+                            res.hash += res.data[k][i] * Math.pow(lHash, k) * Math.pow(cHash, i);
                         }
                     }
                 }
@@ -305,16 +311,21 @@ public class DenseMatrix {
         res.data = null;
         return res;
     }
-    DenseMatrix mul(Object m){
+    public Matrix mul(Matrix m){
         if (m instanceof DenseMatrix) {
-            if (this.w == ((DenseMatrix) m).h) {
+            if (this.w == m.getH()) {
                 return this.mulSq((DenseMatrix) m);
+            }
+        }
+        else if (m instanceof SparseMatrix) {
+            if (this.w == m.getH()) {
+                return (m.transposedMatrix()).mul(this.transposedMatrix()).transposedMatrix();
             }
         }
         return null;
     }
 
-    void writeMatrix(String fName) throws IOException {
+    private void writeMatrix(String fName) throws IOException {
         BufferedWriter out = new BufferedWriter(new FileWriter(fName));
         for (int i = 0; i < this.h; ++i) {
             for (double x: this.data[i]) {
@@ -330,8 +341,8 @@ public class DenseMatrix {
 
     public static void main(String[] args) throws IOException {
         workWFiles wwf = new workWFiles();
-        double[][] mdata1 = new double[150][2000];
-        double[][] mdata2 = new double[2000][374];
+        double[][] mdata1 = new double[7000][10000];
+        double[][] mdata2 = new double[10000][5700];
         for (int i = 0; i < mdata1.length; ++i) {
             mdata1[i] = ThreadLocalRandom.current().doubles(mdata1[i].length).toArray();
         }
@@ -340,10 +351,12 @@ public class DenseMatrix {
         }
         DenseMatrix m1 = new DenseMatrix(mdata1);
         DenseMatrix m2 = new DenseMatrix(mdata2);
-        DenseMatrix res = m1.mul(m2);
+        DenseMatrix res = (DenseMatrix) m1.mul(m2);
+        m1.writeMatrix("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix7000_10000.txt");
+        m2.writeMatrix("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix10000_5700.txt");
+        res.writeMatrix("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix7000_5700.txt");
 //        System.out.println(m1.toString());
 //        System.out.println(m2.toString());
 //        System.out.println(res.toString());
-
     }
 }
