@@ -1,11 +1,12 @@
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class DenseMatrix implements Matrix{
     private final double DELTA = 0.001;
-    private final int lHash = 1;
+    private final int lHash = 2;
     private final int cHash = 3;
     private double hash = 0;
     private double[][] data;
@@ -41,23 +42,21 @@ public class DenseMatrix implements Matrix{
     @Override
     public boolean equals(Object m) {
         if (m instanceof Matrix) {
-            if (m instanceof DenseMatrix) {
-                if (Math.abs(this.hash - ((DenseMatrix) m).hash) < DELTA) {
-                    if (this.h == ((DenseMatrix) m).h && this.w == ((DenseMatrix) m).w) {
-                        for (int i = 0; i < this.h; ++i) {
-                            for (int j = 0; j < this.w; ++j) {
-                                if (Math.abs(this.data[i][j] - ((DenseMatrix) m).data[i][j]) > DELTA) {
-                                    System.out.println("Elements on place [" + i + ", " + j + "] - " +
-                                            this.data[i][j] + " and " + ((DenseMatrix) m).data[i][j] + " are not equal");
-                                    return false;
-                                }
+            if ((Double.isInfinite(this.hash) && Double.isInfinite(((Matrix) m).getHash()))
+                || (Math.abs(this.hash - ((Matrix) m).getHash()) < DELTA)) {
+                if (this.h == ((Matrix) m).getH() && this.w == ((Matrix) m).getW()) {
+                    for (int i = 0; i < this.h; ++i) {
+                        for (int j = 0; j < this.w; ++j) {
+                            if (Math.abs(this.data[i][j] - ((Matrix) m).getElem(i, j)) > DELTA) {
+                                System.out.println("Elements on place [" + i + ", " + j + "] - " +
+                                        this.data[i][j] + " and " + ((Matrix) m).getElem(i, j) + " are not equal");
+                                return false;
                             }
                         }
-                        return true;
                     }
+                    return true;
                 }
             }
-            else if (m instanceof SparseMatrix) return m.equals(this);
         }
         return false;
     }
@@ -99,7 +98,7 @@ public class DenseMatrix implements Matrix{
         }
         return 0;
     }
-    double getHash() {
+    public double getHash() {
         return hash;
     }
     void setH(int height) {
@@ -146,8 +145,7 @@ public class DenseMatrix implements Matrix{
             DenseMatrix res = new DenseMatrix(this.w, this.h);
             for (int i = 0; i < this.h; ++i) {
                 for (int j = 0; j < this.w; ++j) {
-                    res.data[j][i] = this.data[i][j];
-                    res.hash += this.data[i][j] * Math.pow(lHash, j) * Math.pow(cHash, i);
+                    res.addElem(this.data[i][j], j, i);
                 }
             }
             return res;
@@ -192,7 +190,7 @@ public class DenseMatrix implements Matrix{
                 int tow = Math.min(this.w, endw);
                 for (int i = begh; i < toh; ++i) {
                     for (int j = begw; j < tow; ++j) {
-                        this.hash += (m.data[i % m.h][j % m.w] - this.data[i][j]) * Math.pow(lHash, i) * Math.pow(cHash, j); // If evth is ok with hash
+                        this.hash += (m.data[i % m.h][j % m.w] - this.data[i][j]) * Math.pow(lHash, i) * Math.pow(cHash, j);
                         this.data[i][j] = m.data[i % m.h][j % m.w];
                     }
                 }
@@ -324,39 +322,28 @@ public class DenseMatrix implements Matrix{
         }
         return null;
     }
-
-    private void writeMatrix(String fName) throws IOException {
+    public boolean isSparse() {
+        if (this.h > 0 && this.w > 0) {
+            int nonZeroes = 0;
+            for (int i = 0; i < this.h; ++i) {
+                for (int j = 0; j < this.w; ++j) {
+                    if (this.getElem(i, j) != 0) ++nonZeroes;
+                }
+            }
+            return ((float) nonZeroes / (this.h * this.w)) < 0.2;
+        }
+        return false;
+    }
+    public void writeMatrix(String fName) throws IOException {
         BufferedWriter out = new BufferedWriter(new FileWriter(fName));
         for (int i = 0; i < this.h; ++i) {
-            for (double x: this.data[i]) {
+            for (double x : this.data[i]) {
                 out.write(Double.toString(x));
-                out.write(' ');
+                out.write(" ");
             }
             out.write('\n');
         }
         out.flush();
         out.close();
-    }
-
-
-    public static void main(String[] args) throws IOException {
-        workWFiles wwf = new workWFiles();
-        double[][] mdata1 = new double[7000][10000];
-        double[][] mdata2 = new double[10000][5700];
-        for (int i = 0; i < mdata1.length; ++i) {
-            mdata1[i] = ThreadLocalRandom.current().doubles(mdata1[i].length).toArray();
-        }
-        for (int i = 0; i < mdata2.length; ++i) {
-            mdata2[i] = ThreadLocalRandom.current().doubles(mdata2[i].length).toArray();
-        }
-        DenseMatrix m1 = new DenseMatrix(mdata1);
-        DenseMatrix m2 = new DenseMatrix(mdata2);
-        DenseMatrix res = (DenseMatrix) m1.mul(m2);
-        m1.writeMatrix("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix7000_10000.txt");
-        m2.writeMatrix("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix10000_5700.txt");
-        res.writeMatrix("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix7000_5700.txt");
-//        System.out.println(m1.toString());
-//        System.out.println(m2.toString());
-//        System.out.println(res.toString());
     }
 }

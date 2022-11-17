@@ -1,6 +1,6 @@
 import java.io.*;
 
-public class workWFiles {
+public class WorkWithFiles {
     private final int STAND_SIZE = 3;
     public DenseMatrix getDense(String path) throws IOException {
         try {
@@ -259,12 +259,5 @@ public class workWFiles {
             System.out.println(e.getMessage());
             return null;
         }
-    }
-    public static void main(String[] args) throws IOException {
-        workWFiles wwf = new workWFiles();
-        DenseMatrix a = wwf.getDense("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix11_4.txt");
-        SparseMatrix b = wwf.getSparse("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix4_11.txt");
-        System.out.println(b.mul(a).toString());
-
     }
 }
