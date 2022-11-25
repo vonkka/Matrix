@@ -105,6 +105,19 @@ public class SparseMatrixTests {
         }
     }
     @Test
+    public void mulTestBigDense2000() throws IOException{
+        WorkWithFiles wwf = new WorkWithFiles();
+        try {
+            DenseMatrix m1 = wwf.getDense("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix2000_1.txt");
+            DenseMatrix m2 = wwf.getDense("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix2000_2.txt");
+            DenseMatrix res = wwf.getDense("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix2000_res.txt");
+            Assert.assertEquals("Matrices are different", m1.mul(m2), res);
+        }
+        catch (FileNotFoundException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+    @Test
     public void mulTestBigSparse10000() throws IOException{
         WorkWithFiles wwf = new WorkWithFiles();
         try {

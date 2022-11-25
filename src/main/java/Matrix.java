@@ -22,5 +22,6 @@ public interface Matrix {
     // Copy part of matrix
     Matrix copy(int begh, int endh, int begw, int endw);
     Matrix mul(Matrix m);
+    void addElem(double elem, int i, int j);
     void writeMatrix(String fname) throws IOException;
 }

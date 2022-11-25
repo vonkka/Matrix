@@ -2,13 +2,14 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SparseMatrix implements Matrix {
     private final double DELTA = 0.001;
     private final int lHash = 2;
     private final int cHash = 3;
-    private double hash = 0;
+    private long hash = 0;
     private HashMap<Integer, HashMap<Integer, Double>> data;
     private int w, h;
 
@@ -31,7 +32,7 @@ public class SparseMatrix implements Matrix {
                 HashMap<Integer, Double> line = new HashMap<>();
                 for (int j = 0; j < this.w; ++j) {
                     line.put(j ,arr[i][j]);
-                    this.hash += arr[i][j] * Math.pow(lHash, i) * Math.pow(cHash, j);
+                    this.hash += (long) arr[i][j] * Math.pow(lHash, i) * Math.pow(cHash, j);
                 }
                 this.data.put(i, line);
             }
@@ -44,15 +45,24 @@ public class SparseMatrix implements Matrix {
     }
     @Override
     public boolean equals(Object m) {
-        if (m instanceof Matrix) {
+        if (m instanceof SparseMatrix) {
             if ((Double.isInfinite(this.hash) && Double.isInfinite(((Matrix) m).getHash()))
-                    || (Math.abs(this.hash - ((Matrix) m).getHash()) < DELTA)) {
+                    || (this.hash == ((Matrix) m).getHash())) {
                 if (this.h == ((Matrix) m).getH() && this.w == ((Matrix) m).getW()) {
-                    for (int i = 0; i < this.h; ++i) {
-                        for (int j = 0; j < this.w; ++j) {
-                            if (Math.abs(this.getElem(i, j) - ((Matrix) m).getElem(i, j)) > DELTA) {
-                                System.out.println("Elements on place [" + i + ", " + j + "] - " +
-                                        this.data.get(i).get(j) + " and " + ((Matrix) m).getElem(i, j) + " are not equal");
+                    for (Map.Entry<Integer, HashMap<Integer, Double>> line : this.data.entrySet()) {
+                        for (Map.Entry<Integer, Double> elem : line.getValue().entrySet()) {
+                            if (Math.abs(elem.getValue() - ((Matrix) m).getElem(line.getKey(), elem.getKey())) > DELTA) {
+                                System.out.println("Elements on place [" + line.getKey() + ", " + elem.getKey() + "] - " +
+                                        this.data.get(line.getKey()).get(elem.getKey()) + " and " + ((Matrix) m).getElem(line.getKey(), elem.getKey()) + " are not equal");
+                                return false;
+                            }
+                        }
+                    }
+                    for (Map.Entry<Integer, HashMap<Integer, Double>> line : ((SparseMatrix) m).getMapData().entrySet()) {
+                        for (Map.Entry<Integer, Double> elem : line.getValue().entrySet()) {
+                            if (Math.abs(elem.getValue() - this.getElem(line.getKey(), elem.getKey())) > DELTA) {
+                                System.out.println("Elements on place [" + line.getKey() + ", " + elem.getKey() + "] - " +
+                                        this.data.get(line.getKey()).get(elem.getKey()) + " and " + this.getElem(line.getKey(), elem.getKey()) + " are not equal");
                                 return false;
                             }
                         }
@@ -61,11 +71,12 @@ public class SparseMatrix implements Matrix {
                 }
             }
         }
+        else if (m instanceof DenseMatrix) return m.equals(this);
         return false;
     }
     @Override
     public String toString() {
-        this.display();
+//        this.display();
         return "Height - " + this.h + ", width - " + this.w + "\nHash: " + this.hash;
     }
     public void display() {
@@ -115,7 +126,7 @@ public class SparseMatrix implements Matrix {
         this.w = width;
     }
     void addHash(double num) {
-        this.hash += num;
+        this.hash += (long)num;
     }
     public double[][] getData() {
         double[][] res = new double[this.h][this.w];
@@ -126,12 +137,15 @@ public class SparseMatrix implements Matrix {
         }
         return res;
     }
-    void addElem(double elem, int i, int j) {
+    public HashMap<Integer, HashMap<Integer, Double>> getMapData(){
+        return this.data;
+    }
+    synchronized public void addElem(double elem, int i, int j) {
         if (elem != 0) {
             if (i >= 0 && j >= 0 && i < this.h && j < this.w) {
                 if (!this.data.containsKey(i)) this.data.put(i, new HashMap<Integer, Double>());
                 this.data.get(i).put(j, elem);
-                this.hash += elem * Math.pow(lHash, i) * Math.pow(cHash, j);
+                this.hash += (long)elem * Math.pow(lHash, i) * Math.pow(cHash, j);
             }
         }
     }
@@ -189,7 +203,7 @@ public class SparseMatrix implements Matrix {
                     if (line.getKey() >= begh && line.getKey() < toh) {
                         for (Map.Entry<Integer, Double> elem : line.getValue().entrySet()) {
                             if (elem.getKey() >= begw && elem.getKey() < tow) {
-                                this.hash -= this.getElem(line.getKey(), elem.getKey()) * Math.pow(lHash, line.getKey()) * Math.pow(cHash, elem.getKey());
+                                this.hash -= (long)this.getElem(line.getKey(), elem.getKey()) * Math.pow(lHash, line.getKey()) * Math.pow(cHash, elem.getKey());
                                 this.addElem(elem.getValue(), line.getKey(), elem.getKey());
                             }
                         }
@@ -243,7 +257,97 @@ public class SparseMatrix implements Matrix {
         }
         return null;
     }
+    public Matrix mulThreads(Matrix m) throws InterruptedException {
+        if (m instanceof SparseMatrix) {
+            return this.mulThreadsSS((SparseMatrix) m);
+        }
+        else if (m instanceof DenseMatrix) {
+            return this.mulThreadsSD((DenseMatrix) m);
+        }
+        else return new DenseMatrix();
+    }
+    private SparseMatrix mulThreadsSS(SparseMatrix m) throws InterruptedException {
+        if (this.w == m.h) {
+            int maxThreads = 5;
 
+            SparseMatrix res = new SparseMatrix(this.h, m.w);
+            SparseMatrix transposed = new SparseMatrix(m.w, m.h);
+            Queue<Thread> threads = new LinkedBlockingQueue<>(maxThreads);
+            for (int k: m.data.keySet()) {
+                Thread col = new Thread(new MyThreads.TransposeLineSparse(k, m, transposed));
+                if (threads.size() == maxThreads) {
+                    threads.poll().join();
+                    for (Thread t : threads) {
+                        if (!t.isAlive()) threads.remove(t);
+                    }
+                }
+                col.start();
+                threads.add(col);
+            }
+            for (Thread t : threads) {
+                t.join();
+                threads.remove(t);
+            }
+            for (int k: transposed.data.keySet()) {
+                Thread mul = new Thread(new MyThreads.MulSparse(k, this, transposed, res));
+                if (threads.size() == maxThreads) {
+                    threads.remove().join();
+                    for (Thread t : threads) {
+                        if (!t.isAlive()) threads.remove(t);
+                    }
+                }
+                mul.start();
+                threads.add(mul);
+            }
+            for (Thread t : threads) {
+                t.join();
+                threads.remove(t);
+            }
+            return res;
+        }
+        return new SparseMatrix();
+    }
+    private Matrix mulThreadsSD(DenseMatrix m) throws InterruptedException {
+        if (this.w == m.getH()) {
+            int maxThreads = 5;
+
+            SparseMatrix res = new SparseMatrix(this.h, m.getW());
+            DenseMatrix transposed = new DenseMatrix(m.getW(), m.getH());
+            Queue<Thread> threads = new LinkedBlockingQueue<>(maxThreads);
+            for (int k = 0; k < m.getH(); ++k) {
+                Thread col = new Thread(new MyThreads.TransposeLineDense(k, m, transposed));
+                if (threads.size() == maxThreads) {
+                    threads.poll().join();
+                    for (Thread t : threads) {
+                        if (!t.isAlive()) threads.remove(t);
+                    }
+                }
+                col.start();
+                threads.add(col);
+            }
+            for (Thread t : threads) {
+                t.join();
+                threads.remove(t);
+            }
+            for (int k = 0; k < transposed.getH(); ++k) {
+                Thread mul = new Thread(new MyThreads.MulSparse(k, this, transposed, res));
+                if (threads.size() == maxThreads) {
+                    threads.remove().join();
+                    for (Thread t : threads) {
+                        if (!t.isAlive()) threads.remove(t);
+                    }
+                }
+                mul.start();
+                threads.add(mul);
+            }
+            for (Thread t : threads) {
+                t.join();
+                threads.remove(t);
+            }
+            return res;
+        }
+        return new SparseMatrix();
+    }
     public boolean isSparse() {
         if (this.h > 0 && this.w > 0) {
             int nonZeroes = 0;
@@ -288,10 +392,10 @@ public class SparseMatrix implements Matrix {
                 double elem = ThreadLocalRandom.current().nextDouble();
                 m1.addElem(elem, i, j);
             }
-            SparseMatrix m2 = new SparseMatrix(height, width);
+            SparseMatrix m2 = new SparseMatrix(width, height);
             for (int k = 0; k < values; ++k) {
-                int i = ThreadLocalRandom.current().nextInt(0, height);
-                int j = ThreadLocalRandom.current().nextInt(0, width);
+                int i = ThreadLocalRandom.current().nextInt(0, width);
+                int j = ThreadLocalRandom.current().nextInt(0, height);
                 double elem = ThreadLocalRandom.current().nextDouble();
                 m2.addElem(elem, i, j);
             }
@@ -305,9 +409,9 @@ public class SparseMatrix implements Matrix {
 
     public static void main(String[] args) throws IOException {
 //        SparseMatrix m = new SparseMatrix();
-//        m.generateSparse(5000, 5000, 200,
-//                "C:\\Users\\1\\Desktop\\Programming\\Matrices\\bigSparse5000_1.txt",
-//                "C:\\Users\\1\\Desktop\\Programming\\Matrices\\bigSparse5000_2.txt",
-//                "C:\\Users\\1\\Desktop\\Programming\\Matrices\\bigSparse5000_Res.txt");
+//        m.generateSparse(5000, 5000, 50000,
+//                "C:\\Users\\1\\Desktop\\Programming\\Matrices\\big5000_1.txt",
+//                "C:\\Users\\1\\Desktop\\Programming\\Matrices\\big5000_2.txt",
+//                "C:\\Users\\1\\Desktop\\Programming\\Matrices\\big5000_res.txt");
     }
 }
