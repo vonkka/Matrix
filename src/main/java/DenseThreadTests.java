@@ -185,15 +185,16 @@ public class DenseThreadTests {
         DenseMatrix m20 = wwf.getDense("C:\\Users\\1\\Desktop\\Programming\\Matrices\\matrix2000_2.txt");
         int th = 0;
         int mul = 0;
-        for (int i = 0; i < 20; ++i) {
+        for (int i = 0; i < 5; ++i) {
             long start1 = System.currentTimeMillis();
-            m19.mul(m20);
+            m19.mulThreads(m20);
             long end1 = System.currentTimeMillis();
             long start2 = System.currentTimeMillis();
-            m19.mulThreads(m20);
+
+//            m19.mul(m20);
             long end2 = System.currentTimeMillis();
-            th += end2 -start2;
-            mul += end1 - start1;
+            th += end1 - start1;
+            mul += end2 - start2;
         }
         System.out.println(mul);
         System.out.println(th);

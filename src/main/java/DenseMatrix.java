@@ -266,38 +266,38 @@ public class DenseMatrix implements Matrix{
         if (m != null) {
             if (this.data != null && m.data != null) {
                 // determine sizes of 2^p x 2^p separated matrices
-                int k = 0, n = 0;
-                while ((1 << k) < this.h || (1 << k) < this.w) ++k;
-                while ((1 << n) < m.h || (1 << n) < m.w) ++n;
-                int p = Math.max(k, n) - 1;
+//                int k = 0, n = 0;
+//                while ((1 << k) < this.h || (1 << k) < this.w) ++k;
+//                while ((1 << n) < m.h || (1 << n) < m.w) ++n;
+//                int p = Math.max(k, n) - 1;
                 DenseMatrix res = new DenseMatrix(this.h, m.w);
-                if (p > 11) {
-                    int partition = (int) Math.pow(2, p);
-                    // "this" matrix separation
-                    DenseMatrix a1 = this.copy(0, partition, 0, partition);
-                    DenseMatrix a2 = this.copy(0, partition, partition, this.w);
-                    DenseMatrix a3 = this.copy(partition, this.h, 0, partition);
-                    DenseMatrix a4 = this.copy(partition, this.h, partition, this.w);
-                    // "m" matrix separation
-                    DenseMatrix b1 = m.copy(0, partition, 0, partition);
-                    DenseMatrix b3 = m.copy(0, partition, partition, m.w);
-                    DenseMatrix b2 = m.copy(partition, m.h, 0, partition);
-                    DenseMatrix b4 = m.copy(partition, m.h, partition, m.w);
-                    // supporting matrices
-                    DenseMatrix a1b1 = a1.mulSq(b1);
-                    DenseMatrix u = ((a3.sub(a1))).mulSq(b3.sub(b4));
-                    DenseMatrix v = a3.add(a4).mulSq(b3.sub(b1));
-                    DenseMatrix w = a1b1.add((a3.add(a4).sub(a1)).mulSq(b1.add(b4).sub(b3)));
-                    // getting the result matrix
-                    res.insert(a1b1.add(a2.mulSq(b2)), 0, partition, 0, partition);
-                    res.insert((w.add(v).add((a1.add(a2).sub(a3).sub(a4)).mulSq(b4))), 0, partition, partition, res.w);
-                    res.insert((w.add(u).add(a4.mulSq(b2.add(b3).sub(b1).sub(b4)))), partition, res.h, 0, partition);
-                    res.insert(w.add(u).add(v), partition, res.h, partition, res.w);
-                }
-                else {
+//                if (p > 11) {
+//                    int partition = (int) Math.pow(2, p);
+//                    // "this" matrix separation
+//                    DenseMatrix a1 = this.copy(0, partition, 0, partition);
+//                    DenseMatrix a2 = this.copy(0, partition, partition, this.w);
+//                    DenseMatrix a3 = this.copy(partition, this.h, 0, partition);
+//                    DenseMatrix a4 = this.copy(partition, this.h, partition, this.w);
+//                    // "m" matrix separation
+//                    DenseMatrix b1 = m.copy(0, partition, 0, partition);
+//                    DenseMatrix b3 = m.copy(0, partition, partition, m.w);
+//                    DenseMatrix b2 = m.copy(partition, m.h, 0, partition);
+//                    DenseMatrix b4 = m.copy(partition, m.h, partition, m.w);
+//                    // supporting matrices
+//                    DenseMatrix a1b1 = a1.mulSq(b1);
+//                    DenseMatrix u = ((a3.sub(a1))).mulSq(b3.sub(b4));
+//                    DenseMatrix v = a3.add(a4).mulSq(b3.sub(b1));
+//                    DenseMatrix w = a1b1.add((a3.add(a4).sub(a1)).mulSq(b1.add(b4).sub(b3)));
+//                    // getting the result matrix
+//                    res.insert(a1b1.add(a2.mulSq(b2)), 0, partition, 0, partition);
+//                    res.insert((w.add(v).add((a1.add(a2).sub(a3).sub(a4)).mulSq(b4))), 0, partition, partition, res.w);
+//                    res.insert((w.add(u).add(a4.mulSq(b2.add(b3).sub(b1).sub(b4)))), partition, res.h, 0, partition);
+//                    res.insert(w.add(u).add(v), partition, res.h, partition, res.w);
+//                }
+//                else {
                     int toh = Math.min(this.w, m.h);
                     DenseMatrix transposed = m.transposedMatrix();
-                    for (k = 0; k < res.h; ++k) {
+                    for (int k = 0; k < res.h; ++k) {
                         for (int i = 0; i < res.w; ++i) {
                             for (int j = 0; j < toh; ++j) {
                                 res.data[k][i] += this.data[k][j] * transposed.data[i][j];
@@ -305,7 +305,7 @@ public class DenseMatrix implements Matrix{
                             res.hash += (long)res.data[k][i] * Math.pow(lHash, k) * Math.pow(cHash, i);
                         }
                     }
-                }
+//                }
                 return res;
             }
         }
